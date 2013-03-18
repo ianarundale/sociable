@@ -7,7 +7,7 @@ Social Abstraction Layer
 
 SociAbLe is a generic, flexible, open source social networking framework designed to be functional, lightweight, easy to extend. 
 
-SociAbLe is designed to be 
+SociAbLe is designed to be: 
 - Multiplatform (HTML5 + responsive design)
 - Modular (generic functionality easily extended)
 - Solid (confidence through unit testing)
