@@ -1,6 +1,9 @@
 SociAbLe
 ==============
-Social
+<a href="http://www.fastbleep.com">
+  <img src="https://fbcdn-sphotos-e-a.akamaihd.net/hphotos-ak-prn1/282902_571492102866367_1881551262_n.png" width="100px">
+</a>
+Social Abstraction Layer
 
 SociAbLe is a generic, flexible, open source social networking framework designed to be functional, lightweight, easy to extend. 
 
@@ -8,14 +11,6 @@ SociAbLe is designed to be
 - Multiplatform (HTML5 + responsive design)
 - Modular (generic functionality easily extended)
 - Solid (confidence through unit testing)
-- 
-- 
-- <a href="http://www.fastbleep.com">
-  <img src="https://fbcdn-sphotos-e-a.akamaihd.net/hphotos-ak-prn1/282902_571492102866367_1881551262_n.png" width="100px">
-</a>
-
-
-SociAbLe is a generic, flexible, open source social networking framework designed to be functional, lightweight, easy to extend.
 
 
 ## Quick start
