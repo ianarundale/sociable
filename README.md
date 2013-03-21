@@ -50,8 +50,8 @@ Have a bug or a feature request? [Please open a new issue](https://github.com/ia
 
 **Ian Arundale**
 
-+ [http://twitter.com/mdo](http://twitter.com/ianarundale)
-+ [http://github.com/mdo](http://github.com/ianarundale)
++ [http://twitter.com/ianarundale](http://twitter.com/ianarundale)
++ [http://github.com/ianarundale](http://github.com/ianarundale)
 
 
 License TBC.
