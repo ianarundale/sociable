@@ -22,8 +22,8 @@ class Controller_SociableTemplate extends Controller_Template
             $this->template->meta_keywords = '';
             $this->template->meta_description = '';
             $this->template->meta_copywrite = 'Sociable';
-            $this->template->header = View::factory('partial/header');
-            $this->template->footer = View::factory('partial/footer');;
+            $this->template->header = View::factory('partials/header');
+            $this->template->footer = View::factory('partials/footer');
             $this->template->styles = array();
             $this->template->scripts = array();
         }
@@ -36,27 +36,20 @@ class Controller_SociableTemplate extends Controller_Template
     {
         if ($this->auto_render) {
             // Define defaults
-            $styles = array('assets/css/print.css' => 'print', 'assets/css/bootstrap.css' => 'screen'); //assets/js/fancybox/jquery.fancybox-1.3.1.css
-            $scripts = array(); // array('assets/js/fastbleepnotes.js','assets/js/fast.js','assets/js/fancybox/jquery.fancybox-1.3.1.js', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/jquery-ui.js','http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js');
+            //$styles = array('assets/css/print.css' => 'print', 'assets/css/bootstrap.css' => 'screen');
+            //$scripts = array();
 
             // Add defaults to template variables.
             $this->template->title .= " |  $this->site_name";
         }
 
+        // Turn on full page caching when in production (is this a good thing for dynamic content?)
+        if (Kohana::$environment === Kohana::PRODUCTION) {
+            $this->response->headers('cache-control', 'max-age=3600, public');
+        }
+
         // Run anything that needs to run after this.
         parent::after();
-    }
-
-    /**
-     * Convinience method to check if a user is logged into the system or not
-     */
-    public static function userLoggedIn()
-    {
-        if (Auth::instance()->logged_in()) {
-            return true;
-        } else {
-            return false;
-        }
     }
 }
 
