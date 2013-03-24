@@ -22,7 +22,7 @@ Three quick start options are available:
  
 
 ## Features
-Fully featured server side authentication using facebook oAuth
+* Fully featured server side authentication using facebook oAuth
 
 
 
