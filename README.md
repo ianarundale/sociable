@@ -19,6 +19,10 @@ Three quick start options are available:
 
 * [Download the latest release]
 * Clone the repo: `git clone `.
+ 
+
+## Features
+Fully featured server side authentication using facebook oAuth
 
 
 
