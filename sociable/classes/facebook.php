@@ -1,237 +1,160 @@
 <?php
-
 /**
- * Provides access to the Facebook Platform.
+ * Copyright 2011 Facebook, Inc.
  *
- * @package    Sociable/Facebook
- * @author     Ian Arundale <ian.arundale@gmail.com>
- * @copyright  (c) 2007-2012 Ian Arundale
- * @license    TBA
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
 
+//require_once "base_facebook.php";
 
-class Facebook
+/**
+ * Extends the BaseFacebook class with the intent of using
+ * PHP sessions to store user ids and access tokens.
+ */
+class Facebook extends BaseFacebook
 {
-    // Facebook instance
-    protected static $_instance;
+  const FBSS_COOKIE_NAME = 'fbss';
 
-    /**
-     * The Application ID.
-     */
-    protected $app_id;
+  // We can set this to a high number because the main session
+  // expiration will trump this.
+  const FBSS_COOKIE_EXPIRE = 31556926; // 1 year
 
-    /**
-     * The Application API Secret.
-     */
-    protected $app_secret;
+  // Stores the shared session ID if one is set.
+  protected $sharedSessionID;
 
-    /**
-     * The active user session, if one is available.
-     */
-    protected $my_url;
-
-    /**
-     * The access token to use when making API requests
-     */
-    protected $access_token;
-
-
-    /**
-     * Initialize a Facebook Application.
-     *
-     * The configuration:
-     * - app_id: the application ID
-     * - app_secret: the application secret
-     * - my_url: URL to redirect to after authentication
-     *
-     * @param Array $config the application configuration
-     */
-    public function __construct($config)
-    {
-        $this->app_id = $config["app_id"];
-        $this->app_secret = $config["app_secret"];
-        $this->my_url = $config["my_url"];
-        $this->access_token = isset($_SESSION['access_token']) ? $_SESSION['access_token'] : false;
+  /**
+   * Identical to the parent constructor, except that
+   * we start a PHP session to store the user ID and
+   * access token if during the course of execution
+   * we discover them.
+   *
+   * @param Array $config the application configuration. Additionally
+   * accepts "sharedSession" as a boolean to turn on a secondary
+   * cookie for environments with a shared session (that is, your app
+   * shares the domain with other apps).
+   * @see BaseFacebook::__construct in facebook.php
+   */
+  public function __construct($config) {
+    if (!session_id()) {
+      session_start();
     }
-
-    /**
-     * Singleton pattern
-     *
-     * @return Auth
-     */
-    public static function instance()
-    {
-        if (!isset(Facebook::$_instance)) {
-            // Load the facebook configuration
-            $facebook_config = array(
-                "app_id" => Kohana::$config->load('facebook_api_settings.' . "app_id"),
-                "app_secret" => Kohana::$config->load('facebook_api_settings.' . "app_secret"),
-                "my_url" => Kohana::$config->load('facebook_api_settings.' . "my_url"),
-            );
-
-            Facebook::$_instance = new Facebook($facebook_config);
-        }
-
-        return Facebook::$_instance;
+    parent::__construct($config);
+    if (!empty($config['sharedSession'])) {
+      $this->initSharedSession();
     }
+  }
 
-    /**
-     * Maps aliases to Facebook domains.
-     */
-    public static $DOMAIN_MAP = array(
-        'api' => 'https://api.facebook.com/',
-        'api_read' => 'https://api-read.facebook.com/',
-        'graph' => 'https://graph.facebook.com/',
-        'www' => 'https://www.facebook.com/',
+  protected static $kSupportedKeys =
+    array('state', 'code', 'access_token', 'user_id');
+
+  protected function initSharedSession() {
+    $cookie_name = $this->getSharedSessionCookieName();
+    if (isset($_COOKIE[$cookie_name])) {
+      $data = $this->parseSignedRequest($_COOKIE[$cookie_name]);
+      if ($data && !empty($data['domain']) &&
+          self::isAllowedDomain($this->getHttpHost(), $data['domain'])) {
+        // good case
+        $this->sharedSessionID = $data['id'];
+        return;
+      }
+      // ignoring potentially unreachable data
+    }
+    // evil/corrupt/missing case
+    $base_domain = $this->getBaseDomain();
+    $this->sharedSessionID = md5(uniqid(mt_rand(), true));
+    $cookie_value = $this->makeSignedRequest(
+      array(
+        'domain' => $base_domain,
+        'id' => $this->sharedSessionID,
+      )
     );
+    $_COOKIE[$cookie_name] = $cookie_value;
+    if (!headers_sent()) {
+      $expire = time() + self::FBSS_COOKIE_EXPIRE;
+      setcookie($cookie_name, $cookie_value, $expire, '/', '.'.$base_domain);
+    } else {
+      // @codeCoverageIgnoreStart
+      self::errorLog(
+        'Shared session ID cookie could not be set! You must ensure you '.
+        'create the Facebook instance before headers have been sent. This '.
+        'will cause authentication issues after the first request.'
+      );
+      // @codeCoverageIgnoreEnd
+    }
+  }
 
-    public function is_user_logged_in()
-    {
-
-        // if the access token is set, we're all good
-        if (isset($this->access_token) && !empty($this->access_token)) {
-            return true;
-        } else {
-            return false;
-        }
-
-        // otherwise we need to get hold of a token
-        if (isset($_REQUEST["code"]) && !empty($_REQUEST["code"])) {
-            $code = $_REQUEST["code"];
-            return self::retrieve_access_token($code);
-        } else {
-            return false;
-        }
+  /**
+   * Provides the implementations of the inherited abstract
+   * methods.  The implementation uses PHP sessions to maintain
+   * a store for authorization codes, user ids, CSRF states, and
+   * access tokens.
+   */
+  protected function setPersistentData($key, $value) {
+    if (!in_array($key, self::$kSupportedKeys)) {
+      self::errorLog('Unsupported key passed to setPersistentData.');
+      return;
     }
 
-    /**
-     * Redirect the user to the facebook login dialog
-     * @return void
-     */
-    public function attempt_login()
-    {
-        // otherwise we need to get hold of a token
-        if (isset($_REQUEST["code"]) && !empty($_REQUEST["code"])) {
-            $code = $_REQUEST["code"];
-            return self::retrieve_access_token($code);
-        }
+    $session_var_name = $this->constructSessionVariableName($key);
+    $_SESSION[$session_var_name] = $value;
+  }
 
-
-        $_SESSION['state'] = md5(uniqid(rand(), TRUE)); // CSRF protection
-        $dialog_url = "https://www.facebook.com/dialog/oauth?client_id="
-                      . $this->app_id . "&redirect_uri=" . urlencode($this->my_url) . "&state="
-                      . $_SESSION['state'] . "&scope=user_birthday,read_stream, user_location";
-
-        // Send the user to facebook to authenticate, immediately exit to prevent any further PHP execution on our side
-        header('Location: ' . $dialog_url, true);
-        exit;
+  protected function getPersistentData($key, $default = false) {
+    if (!in_array($key, self::$kSupportedKeys)) {
+      self::errorLog('Unsupported key passed to getPersistentData.');
+      return $default;
     }
 
-    /**
-     * Exchange the facebook login code for an access token
-     *
-     * @param String $code The code returned from facebook when authnticating a user
-     * @return boolean True if the $code was successfully swapped for a valid authentication token, False otherwise.
-     */
-    private function retrieve_access_token($code)
-    {
-        if ($_SESSION['state'] && ($_SESSION['state'] === $_REQUEST['state'])) {
-            $token_url = "https://graph.facebook.com/oauth/access_token?"
-                         . "client_id=" . $this->app_id . "&redirect_uri=" . urlencode($this->my_url)
-                         . "&client_secret=" . $this->app_secret . "&code=" . $code;
+    $session_var_name = $this->constructSessionVariableName($key);
+    return isset($_SESSION[$session_var_name]) ?
+      $_SESSION[$session_var_name] : $default;
+  }
 
-            $response = file_get_contents($token_url);
-            $params = null;
-            parse_str($response, $params);
-
-
-            $_SESSION['access_token'] = $params['access_token'];
-            return true;
-        } else {
-            echo("The state does not match. You may be a victim of CSRF.");
-            return false;
-        }
+  protected function clearPersistentData($key) {
+    if (!in_array($key, self::$kSupportedKeys)) {
+      self::errorLog('Unsupported key passed to clearPersistentData.');
+      return;
     }
 
-    private function api_call($url)
-    {
-        return json_decode(file_get_contents($url));
+    $session_var_name = $this->constructSessionVariableName($key);
+    unset($_SESSION[$session_var_name]);
+  }
+
+  protected function clearAllPersistentData() {
+    foreach (self::$kSupportedKeys as $key) {
+      $this->clearPersistentData($key);
     }
-
-    /**
-     * Build the URL for given domain alias, path and parameters.
-     *
-     * @param $name String the name of the domain
-     * @param $path String optional path (without a leading slash)
-     * @param $params Array optional query parameters
-     * @return String the URL for the given parameters
-     */
-    protected function get_url($name, $path = '', $params = array())
-    {
-        $url = self::$DOMAIN_MAP[$name];
-        if ($path) {
-            if ($path[0] === '/') {
-                $path = substr($path, 1);
-            }
-            $url .= $path;
-        }
-
-        // Always append the access token
-        if (!empty($this->access_token)) {
-            $params = array_merge($params, array("access_token" => $this->access_token));
-            if ($params) {
-                $url .= '?' . http_build_query($params);
-            }
-        } else {
-            throw new Exception("Invalid access token");
-        }
-
-        return $url;
+    if ($this->sharedSessionID) {
+      $this->deleteSharedSessionCookie();
     }
+  }
 
+  protected function deleteSharedSessionCookie() {
+    $cookie_name = $this->getSharedSessionCookieName();
+    unset($_COOKIE[$cookie_name]);
+    $base_domain = $this->getBaseDomain();
+    setcookie($cookie_name, '', 1, '/', '.'.$base_domain);
+  }
 
-    // General functions for use by applications to query the users social graph
+  protected function getSharedSessionCookieName() {
+    return self::FBSS_COOKIE_NAME . '_' . $this->getAppId();
+  }
 
-    public function get_user_info()
-    {
-        try {
-            $url = $this->get_url("graph", "me");
-            $user = $this->api_call($url);
-
-        } catch (Exception $ex) {
-            print_r($ex->getMessage());
-            exit;
-        }
-        return $user;
+  protected function constructSessionVariableName($key) {
+    $parts = array('fb', $this->getAppId(), $key);
+    if ($this->sharedSessionID) {
+      array_unshift($parts, $this->sharedSessionID);
     }
-
-    public function get_user_news_feed()
-    {
-        try {
-            $url = $this->get_url("graph", "me/home");
-            $news_feed = $this->api_call($url);
-            echo $url;
-        } catch (Exception $ex) {
-            print_r($ex->getMessage());
-            exit;
-        }
-
-        return $news_feed->data;
-    }
-
-    public function get_available_permissions()
-    {
-        try {
-            $url = $this->get_url("graph", "me", array("metadata" => "1"));
-            $data = $this->api_call($url);
-            //echo $url;
-        } catch (Exception $ex) {
-            print_r($ex->getMessage());
-            exit;
-        }
-
-        return $data->metadata;
-    }
-
-
+    return implode('_', $parts);
+  }
 }

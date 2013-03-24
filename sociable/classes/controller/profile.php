@@ -10,14 +10,14 @@ class Controller_Profile extends Controller_SociableTemplate
 
     public function action_index()
     {
-        session_start();
         $page = $this->template->page_content = View::factory('profile/index');
-        $facebook = Facebook::instance();
-        if($facebook->is_user_logged_in()){
-            $news_feed = $facebook->get_user_news_feed();
-        } else {
-            $news_feed = array();
+        $facebook = SociableFacebookAdapter::get_instance();
+
+        if (!$facebook->is_user_logged_in()) {
+            $facebook->log_user_into_facebook();
         }
+
+        $news_feed = $facebook->get_users_news_feed();
 
         $formatted_news_feed = View::factory("formatters/newsfeed", array("normalized_news_feed" => $news_feed));
 
@@ -25,6 +25,48 @@ class Controller_Profile extends Controller_SociableTemplate
         $page->user = $user;
 
         $page->news_feed = $formatted_news_feed;
+    }
+
+    public function action_facebook()
+    {
+        $facebook = SociableFacebookAdapter::get_instance();
+        // Get User ID
+        $user = $facebook->getUser();
+
+        // We may or may not have this data based on whether the user is logged in.
+        //
+        // If we have a $user id here, it means we know the user is logged into
+        // Facebook, but we don't know if the access token is valid. An access
+        // token is invalid if the user logged out of Facebook.
+
+        if ($user) {
+            try {
+                // Proceed knowing you have a logged in user who's authenticated.
+                $user_profile = $facebook->api('/me');
+            } catch (FacebookApiException $e) {
+                error_log($e);
+                $user = null;
+            }
+        }
+
+        // Login or logout url will be needed depending on current user state.
+        if ($user) {
+            $this->redirect('profile');
+            $logoutUrl = $facebook->getLogoutUrl();
+        } else {
+            $loginUrl = $facebook->getLoginUrl();
+        }
+
+        header('Location: ' . $loginUrl, true);
+
+
+        // This call will always work since we are fetching public data.
+        $naitik = $facebook->api('/ianarundale');
+
+        print_r($naitik);
+        exit;
+
+
     }
 
     public function after()

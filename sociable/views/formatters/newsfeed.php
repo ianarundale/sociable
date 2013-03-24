@@ -1,5 +1,5 @@
 <?php foreach ($normalized_news_feed as $activity): ?>
-<div class="" style="width: 500px;">
+<div class="stream-story">
     <div class="well">
         <a href="/photo/location" class="pull-left" style="margin-right: 10px;">
             <img src="http://graph.facebook.com/<?php echo $activity->from->id ?>/picture"/>

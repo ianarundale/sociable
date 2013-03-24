@@ -18,6 +18,13 @@ class Controller_Account extends Controller
             $facebook->attempt_login();
         }
 
-        $this->redirect('profile');
+        $this->redirect('/profile');
+    }
+
+    public function action_logout()
+    {
+        session_start();
+        session_destroy();
+        $this->redirect('welcome');
     }
 }
