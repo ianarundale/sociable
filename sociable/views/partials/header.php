@@ -18,17 +18,18 @@ if (!isset($page)) $page = "";
             </form>
             <div class="nav-collapse collapse navbar-responsive-collapse">
                 <ul class="nav pull-right">
-                    <li><a href="/profile">Discover</a></li>
+                    <li><a href="/profile">My Profile</a></li>
+                    <li><a href="/profile/friends">Friends</a></li>
+                    <li><a href="/profile/activity">Activity Stream</a></li>
+                    <li><a href="/profile/post">Post to facebook</a></li>
                     <li class="divider-vertical"></li>
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class=" icon-cog"></i>Account<b
                                 class="caret"></b></a>
                         <ul class="dropdown-menu">
-                            <li><a href="#">Action</a></li>
-                            <li><a href="#">Another action</a></li>
-                            <li><a href="#">Something else here</a></li>
+                            <li><a href="/account/settings">Account settings</a></li>
                             <li class="divider"></li>
-                            <li><a href="#">Separated link</a></li>
+                            <li><a href="/account/facebooklogout">Logout</a></li>
                         </ul>
                     </li>
                 </ul>

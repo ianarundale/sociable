@@ -1,6 +1,6 @@
 <?php defined('SYSPATH') or die('No direct script access.');
 
-class Controller_Profile extends Controller_SociableTemplate
+class Controller_Profile extends Controller_Auth_Template
 {
 
     public function before()
@@ -13,9 +13,15 @@ class Controller_Profile extends Controller_SociableTemplate
         $page = $this->template->page_content = View::factory('profile/index');
         $facebook = SociableFacebookAdapter::get_instance();
 
-        if (!$facebook->is_user_logged_in()) {
-            $facebook->log_user_into_facebook();
-        }
+        //print_r($facebook->get_user_info()); exit;
+
+        $page->user = $facebook->get_user_info();
+    }
+
+    public function action_activity()
+    {
+        $page = $this->template->page_content = View::factory('profile/activity');
+        $facebook = SociableFacebookAdapter::get_instance();
 
         $news_feed = $facebook->get_users_news_feed();
 
@@ -25,6 +31,15 @@ class Controller_Profile extends Controller_SociableTemplate
         $page->user = $user;
 
         $page->news_feed = $formatted_news_feed;
+    }
+
+    public function action_friends()
+    {
+        $page = $this->template->page_content = View::factory('profile/friends');
+        $facebook = SociableFacebookAdapter::get_instance();
+
+        //print_r($facebook->get_all_friends());
+        $page->friends = $facebook->get_all_friends();
     }
 
     public function action_facebook()

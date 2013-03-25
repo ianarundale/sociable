@@ -1,6 +1,6 @@
 <?php
 
-class Controller_Api_Index extends Controller {
+class Controller_Api_Index extends Controller_SociableTemplate {
 
     public function action_index()
     {

@@ -74,6 +74,15 @@ class SociableFacebookAdapter extends Facebook
     }
 
     /**
+     * Returns true or false depending on in the current user is logged into facebook
+     * @return bool True if a user is logged in, false otherwise
+     */
+    public function get_user_id()
+    {
+        return self::getUser();
+    }
+
+    /**
      * Redirect the user to the facebook login dialog to authenticate, immediately exit
      * to prevent any further PHP execution on our side
      * @return void
@@ -82,18 +91,33 @@ class SociableFacebookAdapter extends Facebook
     {
         // TODO: Parameterise redirect_url and scope values
         $login_config = array(
-            "redirect_uri" => "/profile",
-            "scope" => "user_birthday, read_stream, user_location, write_stream"
+            "redirect_uri" => "http://sociable.local/account/facebooklogin",
+            "scope" => "user_birthday, read_stream, user_location, publish_stream, email, read_friendlists, publish_checkins, user_education_history, user_work_history"
         );
         $login_url = self::getLoginUrl($login_config);
         header('Location: ' . $login_url, true);
         exit;
+    }
 
-        // otherwise we need to get hold of a token
-        if (isset($_REQUEST["code"]) && !empty($_REQUEST["code"])) {
-            $code = $_REQUEST["code"];
-            return self::retrieve_access_token($code);
-        }
+    /**
+     * Log a user out of facebook
+     * @return void
+     */
+    public function log_user_out_of_facebook()
+    {
+        // TODO: Parameterise redirect_url and scope values
+        $logout_config = array(
+            "next" => "http://sociable.local/"
+        );
+        $logout_url = self::getLogOutUrl($logout_config);
+
+        // Unset the session
+        $_SESSION = array();
+        session_destroy();
+
+        // Log the user out
+        header('Location: ' . $logout_url, true);
+        exit;
     }
 
     /**
@@ -113,10 +137,24 @@ class SociableFacebookAdapter extends Facebook
         return $this->convert_array_to_object($user_info);
     }
 
+    public function get_all_friends()
+    {
+        try {
+            $friends = self::api("me/friends");
+        } catch (Exception $e) {
+            // TODO: Handle the error
+            // Set the return value to be an empty array
+            $user_info = array();
+        }
+
+        return $this->convert_array_to_object($friends['data']);
+    }
+
     /**
      * Returns the last 25 items in the users home news feed
      * @return mixed Object
-     */public function get_users_news_feed()
+     */
+    public function get_users_news_feed()
     {
         try {
             $news_stream = self::api("me/home");
@@ -145,6 +183,16 @@ class SociableFacebookAdapter extends Facebook
         }
 
         return $this->convert_array_to_object($data->metadata);
+    }
+
+    /**
+     * Post an item to the currently logged in users facebook steam
+     * @param $activity
+     * @return void
+     */
+    public function publish_to_stream($activity)
+    {
+
     }
 
     /**
