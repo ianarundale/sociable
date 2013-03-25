@@ -19,7 +19,11 @@ Three quick start options are available:
 
 * [Download the latest release]
 * Clone the repo: `git clone `.
+ 
 
+## Features
+* Fully featured server side authentication using facebook oAuth
+* Integration with both Graph API (http://developers.facebook.com/docs/reference/api/) and Open Graph (https://developers.facebook.com/docs/opengraph/overview/)
 
 
 ## Versioning
